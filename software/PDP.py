@@ -56,7 +56,7 @@ zc_fft = generate(u=1, seq_length=NZC)
 zc_time = None
 
 
-files = ["rx_ch0_0.dat"]
+files = ["usrp_samples_31DBE03_0.dat","usrp_samples_31DBE03_1.dat","usrp_samples_31DEA71_0.dat","usrp_samples_31DEA71_1.dat"]
 dirname = os.path.dirname(__file__)
 
 
@@ -66,14 +66,15 @@ dirname = os.path.dirname(__file__)
 # for each y_zc
 # dpd = ifft(fft(y_zc) / ZC_Freq)
 
-num_channels = 1
+num_channels = 4
+channels = range(num_channels)
 
 
 # Load the IQ samples from the stored files for each channel
 IQ_matrix = []
 for i in range(num_channels):
-    x = np.fromfile(pjoin(dirname, files[i]), dtype=dt)
-    #x = np.fromfile(pjoin(dirname, "results", "1e6Sps", files[i]), dtype=dt)
+    #x = np.fromfile(pjoin(dirname, files[i]), dtype=dt)
+    x = np.fromfile(pjoin(dirname, "results", "1e6Sps", files[i]), dtype=dt)
     samples = np.zeros(len(x),dtype=np.complex64)
 
     samples.real = x['re']/(2**15)
@@ -88,23 +89,46 @@ _, total_samples = IQ_matrix.shape
 
 print(IQ_matrix.shape)
 
-num_seq = (total_samples//2)//NZC
+start_idx = int(1.5*1e6) #start after 1.5 seconds
+# num_sequences = (total_samples - start_idx)//num_samples
+# num_sequences = min(num_sequences, 10)
+# IQ_matrix = IQ_matrix[:, start_idx:start_idx+num_samples*num_sequences]
 
-#IQ_matrix = IQ_matrix[:,total_samples//2:(total_samples//2)+(NZC*num_seq)].reshape(num_channels,num_seq, NZC)
-#y_fft = np.fft.fftshift(np.fft.fft(IQ_matrix, axis=-1),axes=2)
-y = np.fft.fft(IQ_matrix[0,:num_samples])
-y = np.roll(y, NZC//2)[:NZC]
+# a = np.zeros_like(samples, shape=(num_channels, num_sequences, num_samples))
 
-plt.plot(20*np.log10(y))
-plt.show()
+# for ch in channels:
+#     splitted = np.asarray(np.split(IQ_matrix[ch,:], num_sequences))
+#     a[ch,:,:] = splitted
+
+# yf = np.fft.fft(a,axis=-1)
+# yf = np.roll(yf, NZC//2, axis=-1)[:, :, :NZC]
+
+# yf = yf[:,0,:]
+
+IQ_matrix = IQ_matrix[:, start_idx:start_idx+num_samples]
+
+yf = np.fft.fft(IQ_matrix,axis=-1)
+yf = np.roll(yf, NZC//2, axis=-1)[:, :NZC]
 
 
 
-y = y[:NZC]
+# CFO 
 
-h_fft = y/np.fft.fftshift(zc_fft)
+# norm = np.linalg.norm(yf,axis=-1) * np.linalg.norm(yf[:, 0], axis=-1)
 
-h_abs = np.asarray([20*np.log10(abs(np.fft.ifft(y[:NZC]/zc_fft)))])
+# alpha = np.conjugate(yf) * yf[:,0:1]
+# alpha /= np.asarray([np.repeat(norm[i], NZC) for i in range(num_channels)])
+
+# delta_f = 1e6/num_samples
+# print(delta_f)
+# for i in range(num_channels):
+#     plt.plot(np.angle(alpha[i,:]))
+#     expected_phase = np.exp([2.0*np.pi*1j* delta_f * t for t in range(alpha.shape[-1])])
+#     plt.plot(np.angle(expected_phase))
+#     plt.show()
+
+
+h_abs = 20*np.log10(np.abs(np.fft.ifft(yf/zc_fft, axis=1)))
 
 # IQ_matrix = IQ_matrix[:,total_samples//2:(total_samples//2)+NZC]
 # y_fft = np.fft.fft(IQ_matrix, axis=-1)
@@ -113,11 +137,11 @@ h_abs = np.asarray([20*np.log10(abs(np.fft.ifft(y[:NZC]/zc_fft)))])
 
 # h_abs = 20*np.log10(np.abs(np.fft.ifft(h_fft)))
 
-fig, axes = plt.subplots(num_channels)
-axes = axes if isinstance(axes, list) else [axes]
+fig, axes = plt.subplots(1)
+#axes = axes if isinstance(axes, list) else [axes]
 
 for i in range(num_channels):
-    axes[i].plot(h_abs[i, :])
+    axes.plot(h_abs[i, :])
 plt.show()
 
 
