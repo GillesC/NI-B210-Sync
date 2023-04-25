@@ -89,27 +89,29 @@ _, total_samples = IQ_matrix.shape
 
 print(IQ_matrix.shape)
 
-start_idx = int(1.5*1e6) #start after 1.5 seconds
-# num_sequences = (total_samples - start_idx)//num_samples
-# num_sequences = min(num_sequences, 10)
-# IQ_matrix = IQ_matrix[:, start_idx:start_idx+num_samples*num_sequences]
+start_idx = int(1.6*1e6) #start after 1.5 seconds
+num_sequences = (total_samples - start_idx)//num_samples
+num_sequences = min(num_sequences, 10)
+IQ_matrix = IQ_matrix[:, start_idx:start_idx+num_samples*num_sequences]
 
-# a = np.zeros_like(samples, shape=(num_channels, num_sequences, num_samples))
+a = np.zeros_like(samples, shape=(num_channels, num_sequences, num_samples))
 
-# for ch in channels:
-#     splitted = np.asarray(np.split(IQ_matrix[ch,:], num_sequences))
-#     a[ch,:,:] = splitted
+for ch in channels:
+    splitted = np.asarray(np.split(IQ_matrix[ch,:], num_sequences))
+    a[ch,:,:] = splitted
 
-# yf = np.fft.fft(a,axis=-1)
-# yf = np.roll(yf, NZC//2, axis=-1)[:, :, :NZC]
+yf = np.fft.fft(a,axis=-1)
+yf = np.roll(yf, NZC//2, axis=-1)[:, :, :NZC]
 
-# yf = yf[:,0,:]
 
-IQ_matrix = IQ_matrix[:, start_idx:start_idx+num_samples]
+for i in range(num_sequences):
+    plt.plot(20*np.log10(np.abs(np.fft.ifft(yf[0,i,:]/zc_fft))))
+plt.show()
 
-yf = np.fft.fft(IQ_matrix,axis=-1)
-yf = np.roll(yf, NZC//2, axis=-1)[:, :NZC]
 
+for ch in channels:
+    plt.plot(20*np.log10(np.abs(yf[ch,0,:]/zc_fft)))
+plt.show()
 
 
 # CFO 
@@ -137,11 +139,11 @@ h_abs = 20*np.log10(np.abs(np.fft.ifft(yf/zc_fft, axis=1)))
 
 # h_abs = 20*np.log10(np.abs(np.fft.ifft(h_fft)))
 
-fig, axes = plt.subplots(1)
 #axes = axes if isinstance(axes, list) else [axes]
 
 for i in range(num_channels):
-    axes.plot(h_abs[i, :])
+    plt.plot(h_abs[i, :], label=f"Channel {i}")
+plt.legend()
 plt.show()
 
 
